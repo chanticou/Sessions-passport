@@ -6,19 +6,27 @@ import mongoose from 'mongoose'
 import path from 'path'
 import bcrypt from 'bcrypt';
 import User from './schema/User.js'
+import dotenv from 'dotenv';
 import passport from 'passport';
+//FORK
+import {
+    fork
+} from 'child_process'
 import {
     Strategy as LocalStrategy
 } from 'passport-local';
+dotenv.config();
+
+
+
 import * as url from 'url';
-
-
-
+import {
+    query
+} from 'express'
 const __filename = url.fileURLToPath(
     import.meta.url);
 const __dirname = url.fileURLToPath(new URL('.',
     import.meta.url));
-
 
 
 const app = express()
@@ -33,6 +41,7 @@ const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`))
 
 
 
+
 // Handlebars engine
 app.engine('handlebars', handlebars.engine())
 app.set('views', path.join(__dirname, '/views'))
@@ -41,8 +50,7 @@ app.set('view engine', 'handlebars')
 
 
 
-
-mongoose.connect('mongodb+srv://chantal:logaritmoC@cluster0.dpj6h.mongodb.net/userSession?retryWrites=true&w=majority', {
+mongoose.connect(process.env.MONGO, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 }, err => {
@@ -54,7 +62,7 @@ mongoose.connect('mongodb+srv://chantal:logaritmoC@cluster0.dpj6h.mongodb.net/us
 //session & mongoose configuration
 app.use(session({
     store: MongoStore.create({
-        mongoUrl: 'mongodb+srv://chantal:logaritmoC@cluster0.dpj6h.mongodb.net/userSession?retryWrites=true&w=majority',
+        mongoUrl: process.env.SESSION,
         ttl: 10000
     }),
     secret: 'gd45fs15s8',
@@ -136,6 +144,10 @@ passport.use('homeLogin', new LocalStrategy({
 }))
 
 
+
+
+
+
 app.get('/', (req, res) => {
     res.render('home')
 })
@@ -159,7 +171,7 @@ app.get('/logout', (req, res) => {
 
 app.post('/', passport.authenticate('homeLogin', {
     failureRedirect: '/tryagain'
-}),  (req, res) => {
+}), (req, res) => {
     res.redirect('/profile')
 })
 
@@ -178,5 +190,50 @@ app.post('/logout', (req, res) => {
 })
 
 
+let infoData = [{
+        name: process.platform
+    },
+    {
+        name: process.pid
+    },
+    {
+        name: process.version
+    },
+    {
+        name: process.cwd()
+    },
+    {
+        name: process.title
+    },
+    {
+        name: process.memoryUsage
+    }
+]
 
-//isAuth
+app.get('/info', (req, res) => {
+    res.render('info', {
+        infoData: infoData
+    })
+})
+
+//send me va a permitir enviar un dato del proceso padre al proceso hijo
+
+
+const child = fork(__dirname + './randomNumber.js')
+// // QUERY
+app.get('/randoms', (req, res) => {
+    let queryNumber = req.query.cant
+    child.send(queryNumber)
+    
+    child.on('message', (childObj)=>{
+        console.log(childObj)
+        res.send(childObj)
+    })
+   
+})
+
+
+
+
+
+
